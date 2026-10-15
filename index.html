@@ -60,7 +60,6 @@
             margin-bottom: 14px;
             word-break: break-all;
         }
-        /* Nuevo: link al panel de administración (solo visible para admin) */
         .profile-dropdown .pd-admin-link {
             display: block;
             text-align: left;
@@ -89,6 +88,36 @@
         .profile-dropdown .pd-logout:hover {
             background: #fbd8d8;
         }
+
+        /* --- Círculo rojo de notificaciones --- */
+        .link-notif {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .badge-notif {
+            display: none;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            box-sizing: border-box;
+            border-radius: 50%;
+            background: #e53935;
+            color: #fff;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 20px;
+            text-align: center;
+            animation: pulso-notif 1.6s infinite;
+        }
+        .badge-notif.visible {
+            display: inline-block;
+        }
+        @keyframes pulso-notif {
+            0%   { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.6); }
+            70%  { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+        }
     </style>
 </head>
 <body>
@@ -100,8 +129,13 @@
         </div>
         <nav>
             <ul>
-                <li><a href="/notificaciones.html">Notificaciones</a></li>
-                <li id="liRegistrarse"><a href="/iniciarsesion.html">Iniciar sesión</a></li>
+                <li>
+                    <a href="/notificaciones.html" class="link-notif">
+                        Notificaciones
+                        <span class="badge-notif" id="badgeNotif">0</span>
+                    </a>
+                </li>
+                <li id="liRegistrarse"><a href="/iniciarsesion.html">Iniciar Sesión</a></li>
                 <li id="liCart"><a href="/carritocompras.html" id="linkCart" onclick="return validarAccesoCarrito()">Cart Shopping</a></li>
                 <li id="liPerfil" class="oculto">
                     <button type="button" class="profile-btn" id="profileBtn" title="Mi perfil">
@@ -110,7 +144,6 @@
                     <div class="profile-dropdown" id="profileDropdown">
                         <p class="pd-nombre" id="pdNombre">—</p>
                         <p class="pd-correo" id="pdCorreo">—</p>
-                        <!-- Nuevo: solo visible para admin -->
                         <a href="paneladmin.html" class="pd-admin-link oculto" id="pdAdminLink">⚙️ Panel de administración</a>
                         <button type="button" class="pd-logout" id="btnCerrarSesion">Cerrar sesión</button>
                     </div>
@@ -121,13 +154,11 @@
 
     <!-- Banner principal con texto y carrusel -->
     <section class="banner" id="inicio">
-        <!-- Texto arriba -->
         <div class="banner-content">
             <h1>Bienvenidos a Huellas a Casa</h1>
             <p>El mejor cuidado para tu compañero fiel.</p>
         </div>
 
-        <!-- Carrusel de imágenes -->
         <div class="slider">
             <div class="slides">
                <img src="/static/assets/imagen1.jpg" alt="Imagen 1">
@@ -169,39 +200,59 @@
         const pdCorreo = document.getElementById('pdCorreo');
         const pdAdminLink = document.getElementById('pdAdminLink');
         const btnCerrarSesion = document.getElementById('btnCerrarSesion');
+        const badgeNotif = document.getElementById('badgeNotif');
 
         function validarAccesoCarrito() {
             const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
             if (!usuario) {
                 alert('Debes iniciar sesión para acceder al carrito de compras.');
                 window.location.href = '/iniciarsesion.html';
-                return false; // evita que el <a> navegue a carritocompras.html
+                return false;
             }
-            return true; // usuario con sesión: navega normalmente
+            return true;
         }
 
         function actualizarHeader() {
             const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
 
             if (usuario) {
-                // Sesión iniciada: se oculta "Registrarse" y aparece el ícono de perfil
-                // en el espacio que deja libre (Cart Shopping queda a la izquierda de él).
                 liRegistrarse.classList.add('oculto');
                 liPerfil.classList.remove('oculto');
                 pdNombre.textContent = usuario.nombre || 'Usuario';
                 pdCorreo.textContent = usuario.correo || '';
 
-                // Nuevo: solo admin ve el acceso al panel
                 if (usuario.rol === 'admin') {
                     pdAdminLink.classList.remove('oculto');
                 } else {
                     pdAdminLink.classList.add('oculto');
                 }
             } else {
-                // Sin sesión: todo vuelve exactamente a como estaba.
                 liRegistrarse.classList.remove('oculto');
                 liPerfil.classList.add('oculto');
                 profileDropdown.classList.remove('abierto');
+            }
+        }
+
+        async function cargarContadorNotificaciones() {
+            const usuario = JSON.parse(sessionStorage.getItem('usuario') || 'null');
+            if (!usuario) {
+                badgeNotif.classList.remove('visible');
+                return;
+            }
+            try {
+                const res = await fetch(`https://huellas-a-casa-backend.onrender.com/api/notificaciones?id_usuario=${usuario.id}`);
+                const data = await res.json();
+                if (!data.exito) return;
+
+                const noLeidas = data.notificaciones.filter(n => !n.leida).length;
+                if (noLeidas > 0) {
+                    badgeNotif.textContent = noLeidas > 9 ? '9+' : noLeidas;
+                    badgeNotif.classList.add('visible');
+                } else {
+                    badgeNotif.classList.remove('visible');
+                }
+            } catch (e) {
+                console.error('No se pudo cargar el contador de notificaciones', e);
             }
         }
 
@@ -210,7 +261,6 @@
             profileDropdown.classList.toggle('abierto');
         });
 
-        // Cierra el menú si el usuario hace clic fuera de él
         document.addEventListener('click', function (e) {
             if (!liPerfil.contains(e.target)) {
                 profileDropdown.classList.remove('abierto');
@@ -220,9 +270,12 @@
         btnCerrarSesion.addEventListener('click', function () {
             sessionStorage.removeItem('usuario');
             actualizarHeader();
+            cargarContadorNotificaciones();
         });
 
         actualizarHeader();
+        cargarContadorNotificaciones();
+        setInterval(cargarContadorNotificaciones, 30000); // se actualiza cada 30 s
     </script>
 
 </body>
