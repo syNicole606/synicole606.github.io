@@ -35,12 +35,17 @@
         h2 { margin: 0; font-size: 1.2rem; color: #333; flex: 1; }
 
         .badge-pendientes {
-            background: #007bff;
+            background: #e53935;
             color: #fff;
             font-size: 12px;
             font-weight: 700;
-            border-radius: 20px;
-            padding: 3px 10px;
+            min-width: 22px;
+            height: 22px;
+            padding: 0 6px;
+            box-sizing: border-box;
+            border-radius: 50%;
+            line-height: 22px;
+            text-align: center;
             display: none;
         }
         
@@ -54,7 +59,7 @@
             cursor: pointer;
         }
         .notification-item:hover { background-color: #f9f9f9; }
-        .notification-item.unread { background-color: #e3f2fd; }
+        .notification-item.unread { background-color: #fff4f4; }
         
         .icon { 
             width: 45px; 
@@ -75,7 +80,7 @@
         .unread-dot { 
             width: 8px; 
             height: 8px; 
-            background-color: #007bff; 
+            background-color: #e53935; 
             border-radius: 50%; 
             align-self: center; 
             flex-shrink: 0;
@@ -143,7 +148,7 @@ async function cargarNotificaciones() {
 
         const noLeidas = data.notificaciones.filter(n => !n.leida).length;
         if (noLeidas > 0) {
-            badge.textContent = noLeidas;
+            badge.textContent = noLeidas > 9 ? '9+' : noLeidas;
             badge.style.display = 'inline-block';
         } else {
             badge.style.display = 'none';
@@ -171,7 +176,6 @@ async function marcarComoLeida(idNotificacion, elemento) {
     const usuarioActual = obtenerUsuario();
     if (!usuarioActual) return;
 
-    // Si ya estaba leída, no hace falta llamar al servidor de nuevo
     if (!elemento.classList.contains('unread')) return;
 
     elemento.classList.remove('unread');
@@ -181,7 +185,7 @@ async function marcarComoLeida(idNotificacion, elemento) {
     const badge = document.getElementById('badgePendientes');
     const restantes = document.querySelectorAll('.notification-item.unread').length;
     if (restantes > 0) {
-        badge.textContent = restantes;
+        badge.textContent = restantes > 9 ? '9+' : restantes;
     } else {
         badge.style.display = 'none';
     }
