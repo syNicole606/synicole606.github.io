@@ -243,4 +243,32 @@ footer {
   margin-bottom: 20px;
   border: 1.5px solid #c2e0f4;
 }
+.link-notif {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.badge-notif {
+    display: none;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    box-sizing: border-box;
+    border-radius: 50%;
+    background: #e53935;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    animation: pulso-notif 1.6s infinite;
+}
+.badge-notif.visible {
+    display: inline-block;
+}
+@keyframes pulso-notif {
+    0%   { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.6); }
+    70%  { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+}
 
