@@ -85,6 +85,42 @@
       transition: background 0.2s;
     }
     .btn-primary:hover { background: #93AEE8; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    /* ---------- Ventana de verificación ---------- */
+    .modal-fondo {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(36, 62, 147, 0.35);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
+    }
+    .modal-fondo.activo { display: flex; }
+
+    .modal {
+      background: #fff;
+      border: 1px solid #c0cef4;
+      border-radius: 20px;
+      padding: 2rem 1.6rem 1.6rem;
+      max-width: 340px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 8px 32px rgba(83, 112, 212, 0.2);
+    }
+    .modal-icono { font-size: 44px; margin-bottom: 0.6rem; }
+    .modal h3 { color: #243E93; font-size: 20px; margin-bottom: 0.6rem; }
+    .modal p { color: #3f55a3; font-size: 14px; line-height: 1.5; margin-bottom: 1.2rem; }
+    .modal .btn-primary { margin-top: 0.4rem; }
+    .btn-secundario {
+      background: none;
+      border: 1px solid #c0cef4;
+      color: #537ED4;
+    }
+    .btn-secundario:hover { background: #f2f5fd; }
+    #avisoReenvio { font-size: 13px; color: #537ED4; margin-top: 0.6rem; min-height: 1em; }
   </style>
 </head>
 <body>
@@ -102,10 +138,40 @@
 
   <p id="mensaje" style="color:#D4537E; font-size:13px; margin-bottom:10px;"></p>
 
-  <button class="btn-primary" onclick="registrarUsuario()">Confirmar</button>
+  <button class="btn-primary" id="btnConfirmar" onclick="registrarUsuario()">Confirmar</button>
+</div>
+
+<!-- Ventana que confirma el envío del correo de verificación -->
+<div class="modal-fondo" id="modalVerificacion">
+  <div class="modal">
+    <div class="modal-icono" id="modalIcono">📩</div>
+    <h3 id="modalTitulo">¡Revisa tu correo!</h3>
+    <p id="modalTexto"></p>
+    <button class="btn-primary btn-secundario" id="btnReenviar" style="display:none" onclick="reenviarVerificacion()">
+      Reenviar correo
+    </button>
+    <p id="avisoReenvio"></p>
+    <button class="btn-primary" onclick="irAlLogin()">Entendido</button>
+  </div>
 </div>
 
 <script>
+const API = 'https://huellas-a-casa-backend.onrender.com';
+let correoRegistrado = '';
+
+function mostrarModal(enviado, texto) {
+  document.getElementById('modalIcono').textContent = enviado ? '📩' : '⚠️';
+  document.getElementById('modalTitulo').textContent = enviado ? '¡Revisa tu correo!' : 'Cuenta creada';
+  document.getElementById('modalTexto').textContent = texto;
+  document.getElementById('btnReenviar').style.display = enviado ? 'none' : 'block';
+  document.getElementById('avisoReenvio').textContent = '';
+  document.getElementById('modalVerificacion').classList.add('activo');
+}
+
+function irAlLogin() {
+  window.location.href = 'iniciarsesion.html';
+}
+
 async function registrarUsuario() {
   const nombre = document.getElementById('nombre').value.trim();
   const cedula = document.getElementById('cedula').value.trim();
@@ -113,14 +179,20 @@ async function registrarUsuario() {
   const contrasena = document.getElementById('contrasena').value;
   const telefono = document.getElementById('telefono').value.trim();
   const mensaje = document.getElementById('mensaje');
+  const boton = document.getElementById('btnConfirmar');
+
+  mensaje.textContent = '';
 
   if (!nombre || !correo || !contrasena) {
     mensaje.textContent = "Por favor completa nombre, correo y contraseña.";
     return;
   }
 
+  boton.disabled = true;
+  boton.textContent = 'Enviando...';
+
   try {
-    const respuesta = await fetch('https://huellas-a-casa-backend.onrender.com/api/registrar', {
+    const respuesta = await fetch(API + '/api/registrar', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nombre, cedula, correo, contrasena, telefono })
@@ -128,17 +200,34 @@ async function registrarUsuario() {
 
     const data = await respuesta.json();
 
-    if (data.exito) {
-      // Iniciamos sesión inmediatamente con los datos del usuario recién registrado,
-      // igual que hace iniciarsesion.html tras un login exitoso.
-      sessionStorage.setItem('usuario', JSON.stringify(data.usuario));
-      window.location.href = 'index.html';
+    if (data.exito && data.requiere_verificacion) {
+      correoRegistrado = correo;
+      mostrarModal(data.correo_enviado === true, data.mensaje);
     } else {
-      mensaje.textContent = data.mensaje;
+      mensaje.textContent = data.mensaje || 'No se pudo completar el registro.';
     }
   } catch (error) {
-    mensaje.textContent = "Error de conexión con el servidor.";
+    mensaje.textContent = "Error de conexión con el servidor. Si es la primera vez, espera unos segundos e inténtalo de nuevo.";
     console.error(error);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Confirmar';
+  }
+}
+
+async function reenviarVerificacion() {
+  const aviso = document.getElementById('avisoReenvio');
+  aviso.textContent = 'Enviando...';
+  try {
+    const respuesta = await fetch(API + '/api/reenviar_verificacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correo: correoRegistrado })
+    });
+    const data = await respuesta.json();
+    aviso.textContent = data.mensaje;
+  } catch (e) {
+    aviso.textContent = 'No se pudo conectar con el servidor.';
   }
 }
 </script>
