@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="referrer" content="no-referrer" />
+  <title>Recuperar contraseña</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #fdf2f5;
+      font-family: 'Segoe UI', sans-serif;
+      padding: 16px;
+    }
+
+    .card {
+      background: #fff8f9;
+      border: 1px solid #f4c0d1;
+      border-radius: 20px;
+      padding: 2.5rem 2rem 2rem;
+      width: 360px;
+      max-width: 100%;
+      position: relative;
+      box-shadow: 0 4px 24px rgba(212, 83, 126, 0.08);
+    }
+
+    .btn-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: #D4537E;
+      font-size: 13px;
+      margin-bottom: 1.2rem;
+      text-decoration: none;
+    }
+    .btn-back:hover { color: #993556; }
+    .btn-back::before { content: "←"; }
+
+    .title {
+      text-align: center;
+      font-size: 22px;
+      font-weight: 600;
+      color: #993556;
+      margin-bottom: 0.8rem;
+    }
+    .subtitulo {
+      text-align: center;
+      font-size: 14px;
+      color: #72243E;
+      margin-bottom: 1.5rem;
+      line-height: 1.4;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1px solid #F4C0D1;
+      border-radius: 10px;
+      background: #fff;
+      font-size: 14px;
+      color: #72243E;
+      margin-bottom: 1rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .form-input:focus {
+      border-color: #D4537E;
+      box-shadow: 0 0 0 3px rgba(212,83,126,0.12);
+    }
+    .form-input::placeholder { color: #ED93B1; }
+
+    .btn-primary {
+      display: block;
+      width: 100%;
+      padding: 12px;
+      background: #F4C0D1;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 600;
+      color: #72243E;
+      cursor: pointer;
+      margin-bottom: 1rem;
+      text-align: center;
+      text-decoration: none;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #ED93B1; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    .msg-error { color: #D4537E; font-size: 13px; margin-bottom: 10px; min-height: 1em; }
+    .msg-ok {
+      background: #fff;
+      border: 1px solid #F4C0D1;
+      border-radius: 10px;
+      color: #72243E;
+      font-size: 14px;
+      line-height: 1.4;
+      padding: 12px 14px;
+      margin-bottom: 1rem;
+    }
+
+    .oculto { display: none; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+
+  <!-- ===== Paso 1: pedir el enlace por correo ===== -->
+  <section id="pasoCorreo">
+    <a href="iniciarsesion.html" class="btn-back">Volver</a>
+    <p class="title">🔑 Recuperar contraseña</p>
+    <p class="subtitulo">Escribe el correo de tu cuenta y te enviaremos un enlace para crear una contraseña nueva.</p>
+
+    <input class="form-input" type="email" id="correo" placeholder="correo" />
+    <p class="msg-error" id="errorCorreo"></p>
+    <div class="msg-ok oculto" id="okCorreo"></div>
+
+    <button class="btn-primary" id="btnEnviar" onclick="pedirEnlace()">Enviar enlace</button>
+  </section>
+
+  <!-- ===== Paso 2: elegir la contraseña nueva (llega desde el correo) ===== -->
+  <section id="pasoNueva" class="oculto">
+    <p class="title">🔑 Nueva contraseña</p>
+    <p class="subtitulo">Elige una contraseña nueva para tu cuenta (mínimo 6 caracteres).</p>
+
+    <input class="form-input" type="password" id="nueva" placeholder="contraseña nueva" />
+    <input class="form-input" type="password" id="repetir" placeholder="repite la contraseña" />
+    <p class="msg-error" id="errorNueva"></p>
+    <div class="msg-ok oculto" id="okNueva"></div>
+
+    <button class="btn-primary" id="btnGuardar" onclick="guardarNueva()">Guardar contraseña</button>
+    <a href="iniciarsesion.html" class="btn-back oculto" id="linkLogin">Ir a iniciar sesión</a>
+  </section>
+
+</div>
+
+<script>
+const API = 'https://huellas-a-casa-backend.onrender.com';
+
+// Si la dirección trae ?token=..., mostramos el formulario de contraseña nueva
+const token = new URLSearchParams(window.location.search).get('token');
+if (token) {
+  document.getElementById('pasoCorreo').classList.add('oculto');
+  document.getElementById('pasoNueva').classList.remove('oculto');
+}
+
+async function pedirEnlace() {
+  const correo = document.getElementById('correo').value.trim();
+  const error = document.getElementById('errorCorreo');
+  const ok = document.getElementById('okCorreo');
+  const boton = document.getElementById('btnEnviar');
+
+  error.textContent = '';
+  ok.classList.add('oculto');
+
+  if (!correo) {
+    error.textContent = 'Escribe tu correo.';
+    return;
+  }
+
+  boton.disabled = true;
+  boton.textContent = 'Enviando...';
+
+  try {
+    const respuesta = await fetch(API + '/api/olvide_contrasena', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correo })
+    });
+    const data = await respuesta.json();
+
+    if (data.exito) {
+      ok.textContent = data.mensaje;
+      ok.classList.remove('oculto');
+    } else {
+      error.textContent = data.mensaje;
+    }
+  } catch (e) {
+    error.textContent = 'Error de conexión con el servidor. Si es la primera vez, espera unos segundos e inténtalo de nuevo.';
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Enviar enlace';
+  }
+}
+
+async function guardarNueva() {
+  const nueva = document.getElementById('nueva').value;
+  const repetir = document.getElementById('repetir').value;
+  const error = document.getElementById('errorNueva');
+  const ok = document.getElementById('okNueva');
+  const boton = document.getElementById('btnGuardar');
+
+  error.textContent = '';
+  ok.classList.add('oculto');
+
+  if (nueva.length < 6) {
+    error.textContent = 'La contraseña debe tener al menos 6 caracteres.';
+    return;
+  }
+  if (nueva !== repetir) {
+    error.textContent = 'Las contraseñas no coinciden.';
+    return;
+  }
+
+  boton.disabled = true;
+  boton.textContent = 'Guardando...';
+
+  try {
+    const respuesta = await fetch(API + '/api/restablecer_contrasena', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token, contrasena: nueva })
+    });
+    const data = await respuesta.json();
+
+    if (data.exito) {
+      ok.textContent = data.mensaje;
+      ok.classList.remove('oculto');
+      // Quitamos el token de la barra de direcciones y mostramos el acceso al login
+      history.replaceState(null, '', 'recuperar.html');
+      boton.classList.add('oculto');
+      document.getElementById('nueva').classList.add('oculto');
+      document.getElementById('repetir').classList.add('oculto');
+      document.getElementById('linkLogin').classList.remove('oculto');
+    } else {
+      error.textContent = data.mensaje;
+      boton.disabled = false;
+      boton.textContent = 'Guardar contraseña';
+    }
+  } catch (e) {
+    error.textContent = 'Error de conexión con el servidor. Inténtalo de nuevo.';
+    boton.disabled = false;
+    boton.textContent = 'Guardar contraseña';
+  }
+}
+</script>
+
+</body>
+</html>
