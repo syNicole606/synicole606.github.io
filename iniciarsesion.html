@@ -123,6 +123,15 @@
     .btn-reenviar:hover { background: #FBEAF0; }
     .btn-reenviar:disabled { opacity: 0.6; cursor: not-allowed; }
 
+    .link-olvide {
+      display: inline-block;
+      font-size: 13px;
+      color: #D4537E;
+      text-decoration: none;
+      margin-top: 2px;
+    }
+    .link-olvide:hover { color: #993556; text-decoration: underline; }
+
     #mensaje { color:#D4537E; font-size:13px; margin-bottom: 10px; }
     #avisoReenvio { color:#993556; font-size:13px; margin-bottom: 10px; }
   </style>
@@ -146,6 +155,8 @@
 
   <button class="btn-primary" id="btnLogin" onclick="iniciarSesion()">Iniciar sesión</button>
   <a href="registrarse.html" class="btn-back" style="margin-top:10px;">¿No tienes cuenta? Regístrate</a>
+  <br />
+  <a href="recuperar.html" class="link-olvide">¿Olvidaste tu contraseña?</a>
 </div>
 
 <script>
