@@ -105,33 +105,26 @@
       transition: background 0.2s;
     }
     .btn-primary:hover { background: #ED93B1; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
 
-    .divider {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 1rem;
-    }
-    .divider hr { flex: 1; border: none; border-top: 1px solid #F4C0D1; }
-    .divider span { font-size: 12px; color: #ED93B1; white-space: nowrap; }
-
-    .btn-social {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+    .btn-reenviar {
+      display: none;
       width: 100%;
-      padding: 11px 14px;
+      padding: 10px;
       background: #fff;
       border: 1px solid #F4C0D1;
       border-radius: 10px;
       font-size: 14px;
-      color: #72243E;
+      font-weight: 600;
+      color: #D4537E;
       cursor: pointer;
-      margin-bottom: 0.75rem;
-      transition: background 0.2s;
-      text-align: left;
+      margin-bottom: 1rem;
     }
-    .btn-social:hover { background: #FBEAF0; }
+    .btn-reenviar:hover { background: #FBEAF0; }
+    .btn-reenviar:disabled { opacity: 0.6; cursor: not-allowed; }
+
+    #mensaje { color:#D4537E; font-size:13px; margin-bottom: 10px; }
+    #avisoReenvio { color:#993556; font-size:13px; margin-bottom: 10px; }
   </style>
 </head>
 <body>
@@ -143,18 +136,37 @@
   <p class="title">🐾 Iniciar sesión</p>
 
   <input class="form-input" type="email" id="correo" placeholder="correo" />
-<input class="form-input" type="password" id="contrasena" placeholder="contraseña" />
-<p id="mensaje" style="color:#D4537E; font-size:13px;"></p>
-<button class="btn-primary" onclick="iniciarSesion()">Iniciar sesión</button>
-<a href="registrarse.html" class="btn-back" style="margin-top:10px;">¿No tienes cuenta? Regístrate</a>
+  <input class="form-input" type="password" id="contrasena" placeholder="contraseña" />
+  <p id="mensaje"></p>
+
+  <button class="btn-reenviar" id="btnReenviar" onclick="reenviarVerificacion()">
+    📩 Reenviar correo de verificación
+  </button>
+  <p id="avisoReenvio"></p>
+
+  <button class="btn-primary" id="btnLogin" onclick="iniciarSesion()">Iniciar sesión</button>
+  <a href="registrarse.html" class="btn-back" style="margin-top:10px;">¿No tienes cuenta? Regístrate</a>
+</div>
+
 <script>
+const API = 'https://huellas-a-casa-backend.onrender.com';
+
 async function iniciarSesion() {
   const correo = document.getElementById('correo').value.trim();
   const contrasena = document.getElementById('contrasena').value;
   const mensaje = document.getElementById('mensaje');
+  const boton = document.getElementById('btnLogin');
+  const btnReenviar = document.getElementById('btnReenviar');
+
+  mensaje.textContent = '';
+  document.getElementById('avisoReenvio').textContent = '';
+  btnReenviar.style.display = 'none';
+
+  boton.disabled = true;
+  boton.textContent = 'Entrando...';
 
   try {
-    const respuesta = await fetch('https://huellas-a-casa-backend.onrender.com/api/login', {
+    const respuesta = await fetch(API + '/api/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ correo, contrasena })
@@ -168,10 +180,40 @@ async function iniciarSesion() {
       window.location.href = 'index.html';
     } else {
       mensaje.textContent = data.mensaje;
+      // Si el correo aún no está verificado, ofrecemos reenviar el enlace
+      if (data.sin_verificar) {
+        btnReenviar.style.display = 'block';
+      }
     }
   } catch (error) {
-    mensaje.textContent = "Error de conexión con el servidor.";
+    mensaje.textContent = "Error de conexión con el servidor. Si es la primera vez, espera unos segundos e inténtalo de nuevo.";
     console.error(error);
+  } finally {
+    boton.disabled = false;
+    boton.textContent = 'Iniciar sesión';
+  }
+}
+
+async function reenviarVerificacion() {
+  const correo = document.getElementById('correo').value.trim();
+  const aviso = document.getElementById('avisoReenvio');
+  const boton = document.getElementById('btnReenviar');
+
+  aviso.textContent = 'Enviando...';
+  boton.disabled = true;
+
+  try {
+    const respuesta = await fetch(API + '/api/reenviar_verificacion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ correo })
+    });
+    const data = await respuesta.json();
+    aviso.textContent = data.mensaje + ' Revisa también la carpeta de spam.';
+  } catch (e) {
+    aviso.textContent = 'No se pudo conectar con el servidor.';
+  } finally {
+    boton.disabled = false;
   }
 }
 </script>
